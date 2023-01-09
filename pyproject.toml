@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "jira-github-pr-check-python"
+version = "0.1.0"
+description = "Cloud function used as a Github Webhook. Will check if a PR name is properly linked to a jira ticket."
+authors = ["Frédéric BARRAU <frederic.barrau@zenika.com>"]
+license = "Proprietary"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+functions-framework = ">=3.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+prospector = "^1.8.3"
+black = {version = "^23.1a1", allow-prereleases = true}
+pylint = "^2.15.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
