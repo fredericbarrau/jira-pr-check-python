@@ -79,20 +79,41 @@ $ functions_framework --target=jira_github_pr_check
 
 #### Exposing the cloud function with ngrok
 
-Ngrok in a tool for providing a public access of a local development service. 
+[Ngrok](https://ngrok.com/download) in a tool for providing a public access of a local development service. 
+
+When launched locally (see above), the cloud function is listening to port 8080 (default) on localhost. Ngrok can expose this port in ngrok.io:
 
 ```console
+$ ngrok htp 8080
+Session Status                online
+Account                       Fred Barrau (Plan: Free)
+Version                       2.3.40
+Region                        United States (us)
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    http://fe0b-217-128-118-2.ngrok.io -> http://localhost:8080
+Forwarding                    https://fe0b-217-128-118-2.ngrok.io -> http://localhost:8080
 
+Connections                   ttl     opn     rt1     rt5     p50     p90
+                              31      0       0.00    0.00    0.65    15.16
+
+HTTP Requests
+-------------
+
+POST /                         502 Bad Gateway
+POST /                         200 OK
+POST /                         200 OK
+POST /                         404 NOT FOUND
+POST /                         404 NOT FOUND
+POST /                         200 OK
+POST /                         404 NOT FOUND
+POST /                         404 NOT FOUND
+POST /                         404 NOT FOUND
+POST /
 ```
 
+This exposition can then be used to test from a [Github webhook](https://docs.github.com/en/developers/webhooks-and-events/webhooks/creating-webhooks) configured on a test repository.
 ### Local debugging
 
 As mentionned above, the current folder contains a `.vscode/launch.json` file which, when used in a dedicated workspace, provides the configuration for the debugger of the [python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) vscode extension.
 
-
-## Notes
-
-### Refs
-
-* `ref/heads/main`
 
