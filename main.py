@@ -82,7 +82,7 @@ def push_github_commit_status(commit_status: dict) -> bool:
         context="github-pr/branch-name-contains-jira-issue",
     )
     log.debug(
-        f"send commit status {commit_status['state']} for commit sha {commit_status['commit_sha']} in project {commit_status['repository_name']}"
+        f"send commit status {commit_status['status']} for commit sha {commit_status['commit_sha']} in project {commit_status['repository_name']}"
     )
 
 
