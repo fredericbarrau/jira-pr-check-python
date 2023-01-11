@@ -3,7 +3,7 @@ from functions_framework import logging
 import functions_framework
 from jira import JIRA
 import os
-import re
+import regex
 
 
 log = logging.getLogger(__name__)
@@ -22,8 +22,10 @@ class NotJiraIssueException(Exception):
 
 
 def get_jira_issue_from_branch_name(branch_name: str) -> str:
-    issue_re = "^([a-z,A-Z]+-[0-9]+).*$"
-    match = re.match(issue_re, branch_name)
+    match = regex.findall(
+        r"(?<= |^)([0-9A-Z][A-Za-z]{1,10}-[0-9]+)(?= |$)", branch_name
+    )
+    # Search for the first issue found in the commit message
     return match[1] if match is not None else match
 
 
@@ -44,9 +46,9 @@ def is_jira_issue(config: dict, issue_id: str) -> bool:
     return result
 
 
-def get_branch_name(git_ref: str) -> str | None:
+def get_branch_name_from_ref(git_ref: str) -> str | None:
     branch_name_re = "^refs/heads/(.*)$"
-    match = re.match(branch_name_re, git_ref)
+    match = regex.match(branch_name_re, git_ref)
     return match[1] if match is not None else match
 
 
@@ -73,10 +75,10 @@ def jira_github_pr_check(request):
     config = get_config()
     # Set the log level
     log.setLevel(config["log_level"])
+    log.info(f"log level: {log.level}")
     try:
         payload = request.get_json()
-        push_branch = payload["ref"]
-        branch_name = get_branch_name(git_ref=push_branch)
+        branch_name = payload["pull_request"]["head"]["ref"]
         if branch_name is None:
             log.debug("branch name not found in the github payload")
             raise ValueError(
@@ -97,6 +99,9 @@ def jira_github_pr_check(request):
             raise NotJiraIssueException(
                 f"branch name {branch_name} does not reference a JIRA issue. Issue Id ({issue_id}) not found in JIRA."
             )
+        log.info(
+            f"branch name ({branch_name}) references a found Jira issue ({issue_id})"
+        )
     except NotJiraIssueException as e:
         log.error(e)
         result = {"message": str(e)}
@@ -105,5 +110,4 @@ def jira_github_pr_check(request):
         log.error(e)
         result = {"message": str(e)}
         code = 400
-    log.info(f"branch name ({branch_name}) references a found Jira issue ({issue_id})")
     return result, code

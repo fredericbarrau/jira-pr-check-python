@@ -11,6 +11,7 @@ python = "^3.10"
 functions-framework = ">=3.0.0"
 jira = "^3.4.1"
 python-dotenv = "^0.21.0"
+regex = "^2022.10.31"
 
 
 [tool.poetry.group.dev.dependencies]
