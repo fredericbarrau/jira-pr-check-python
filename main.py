@@ -64,6 +64,7 @@ def get_config() -> dict:
     )
     config["jira_email"] = os.getenv("JIRA_EMAIL")
     config["jira_token"] = os.getenv("JIRA_TOKEN")
+    config["github_token"] = os.getenv("GITHUB_TOKEN")
     return config
 
 
@@ -93,7 +94,7 @@ def jira_github_pr_check(request):
     github_commit_status = {
         "commit_sha": None,
         "repository_name": None,
-        "github_token": config["GITHUB_TOKEN"],
+        "github_token": config["github_token"],
         "message": "failed to check if branch name has a jira issue (probably not)",
         "callback_url": request.url,
         "status": "failure",
