@@ -23,10 +23,11 @@ class NotJiraIssueException(Exception):
 
 def get_jira_issue_from_branch_name(branch_name: str) -> str:
     match = regex.findall(
-        r"(?<= |^)([0-9A-Z][A-Za-z]{1,10}-[0-9]+)(?= |$)", branch_name
+        r"(?<= |-|_|^)([0-9A-Z][A-Za-z]{1,10}-[0-9]+)(?= |-|_|$)",
+        branch_name,
     )
     # Search for the first issue found in the commit message
-    return match[1] if len(match) > 0 else None
+    return match[0] if len(match) > 0 else None
 
 
 def is_jira_issue(config: dict, issue_id: str) -> bool:
@@ -79,7 +80,7 @@ def push_github_commit_status(commit_status: dict) -> bool:
         state=commit_status["status"],
         target_url=commit_status["callback_url"],
         description=commit_status["message"],
-        context="github-pr/branch-name-contains-jira-issue",
+        context="branch-name/jira",
     )
     log.debug(
         f"send commit status {commit_status['status']} for commit sha {commit_status['commit_sha']} in project {commit_status['repository_name']}"
