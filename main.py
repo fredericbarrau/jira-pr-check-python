@@ -26,7 +26,7 @@ def get_jira_issue_from_branch_name(branch_name: str) -> str:
         r"(?<= |^)([0-9A-Z][A-Za-z]{1,10}-[0-9]+)(?= |$)", branch_name
     )
     # Search for the first issue found in the commit message
-    return match[1] if match is not None else match
+    return match[1] if len(match) > 0 else None
 
 
 def is_jira_issue(config: dict, issue_id: str) -> bool:
@@ -69,16 +69,20 @@ def get_config() -> dict:
 
 
 def push_github_commit_status(commit_status: dict) -> bool:
-    g = Github(
-        base_url="https://github.com/api/v3",
-        login_or_token=commit_status["github_token"],
-    )
+    g = Github(commit_status["github_token"])
     repo = g.get_repo(commit_status["repository_name"])
-    repo.get_commit(sha=commit_status["commit_sha"]).create_status(
+    log.debug(f"get github repo {repo}")
+    commit = repo.get_commit(sha=commit_status["commit_sha"])
+    log.debug(f"get github commit {commit}")
+
+    commit.create_status(
         state=commit_status["status"],
         target_url=commit_status["callback_url"],
         description=commit_status["message"],
         context="github-pr/branch-name-contains-jira-issue",
+    )
+    log.debug(
+        f"send commit status {commit_status['state']} for commit sha {commit_status['commit_sha']} in project {commit_status['repository_name']}"
     )
 
 
@@ -120,14 +124,11 @@ def jira_github_pr_check(request):
         ]["full_name"]
 
         issue_id = get_jira_issue_from_branch_name(branch_name)
-        log.debug(f"issue id found ({issue_id}) in branch name {branch_name}")
         if issue_id is None:
-            log.error(
-                f"branch name {branch_name} does not fit the JIRA branch name requirements"
-            )
             raise NotJiraIssueException(
                 f"branch name {branch_name} does not fit the JIRA branch name requirements"
             )
+        log.debug(f"issue id found ({issue_id}) in branch name {branch_name}")
         if not is_jira_issue(config=config, issue_id=issue_id):
             log.debug(f"issue ID {issue_id} is not a jira issue")
             raise NotJiraIssueException(
@@ -143,16 +144,18 @@ def jira_github_pr_check(request):
         github_commit_status["status"] = "success"
 
     except NotJiraIssueException as e:
-        github_commit_status["message"] = e
+        error_message = str(e)
+        github_commit_status["message"] = error_message
 
         log.error(e)
-        result = {"message": str(e)}
+        result = {"message": error_message}
         code = 404
     except Exception as e:
-        github_commit_status["message"] = e
+        error_message = str(e)
+        github_commit_status["message"] = error_message
 
         log.error(e)
-        result = {"message": str(e)}
+        result = {"message": error_message}
         code = 400
 
     try:
