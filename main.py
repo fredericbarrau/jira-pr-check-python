@@ -3,6 +3,8 @@ from functions_framework import logging
 from github import Github
 from jira import JIRA
 import functions_framework
+import hashlib
+import hmac
 import os
 import regex
 
@@ -18,6 +20,43 @@ class NotJiraIssueException(Exception):
     """
     Raised when a Github branch is not referenced as a Jira issue
     """
+
+
+class WebhookNotAuthorizedException(Exception):
+    """
+    Raised when a Github branch is not referenced as a Jira issue
+    """
+
+
+def check_payload_secret(request: object, config: dict) -> bool:
+    """
+    Check the payload send if the configuration contains a webhook secret
+    See :
+    - https://docs.github.com/en/developers/webhooks-and-events/webhooks/securing-your-webhooks
+    """
+
+    result = None
+
+    github_hash = request.headers.get("X-Hub-Signature-256")
+    # Fetch the request for the hash
+    if github_hash is None:
+        result = False
+
+    github_webhook_secret = config["github_webhook_secret"]
+    if github_webhook_secret is None:
+        # no secret provided: no check needed
+        result = True
+    else:
+        signature = hmac.new(
+            key=bytes(github_webhook_secret, "latin-1"),
+            digestmod=hashlib.sha256,
+            msg=request.get_data(),
+        ).hexdigest()
+        # Check if the transmitted sha256 matches the hash of the content
+        # with the webhook's secret
+        result = ("sha256=" + signature) == github_hash
+        log.debug("check of the SHA256 of the message: %s", result)
+    return result
 
 
 def get_payload_type(payload: str) -> str | None:
@@ -94,6 +133,7 @@ def get_config() -> dict:
     config["jira_email"] = os.getenv("JIRA_EMAIL")
     config["jira_token"] = os.getenv("JIRA_TOKEN")
     config["github_token"] = os.getenv("GITHUB_TOKEN")
+    config["github_webhook_secret"] = os.getenv("GITHUB_WEBHOOK_SECRET")
     return config
 
 
@@ -129,7 +169,7 @@ def push_github_commit_status(commit_status: dict) -> bool:
 @functions_framework.http
 def jira_github_pr_check(request):
     # Initialize the defaults response code & content
-    code = 200
+    send_http_code = 200
     result = "OK"
 
     # Get the cloud function configuration
@@ -149,6 +189,10 @@ def jira_github_pr_check(request):
     log.setLevel(config["log_level"])
 
     try:
+        # Check if github webhook's secret is OK
+        if not check_payload_secret(config=config, request=request):
+            raise WebhookNotAuthorizedException("webhook secret do not match")
+
         # Payload MUST be send as a JSON application/json content
         # => beware of the configuration of the Webhook in Github
         payload = request.get_json()
@@ -198,30 +242,38 @@ def jira_github_pr_check(request):
         github_commit_status["status"] = "success"
 
     # Error management
+    except WebhookNotAuthorizedException as e:
+        error_message = str(e)
+        github_commit_status["message"] = error_message
+
+        log.error(error_message)
+        result = {"message": error_message}
+        send_http_code = 403
     except NotJiraIssueException as e:
         # That was not a proper jira issue :(
         error_message = str(e)
         github_commit_status["message"] = error_message
 
-        log.error(e)
+        log.error(error_message)
         result = {"message": error_message}
-        code = 404
+        send_http_code = 404
     except Exception as e:
         # Something went wrong somewhat
         # incorrect jira message format, or whatever
         error_message = str(e)
         github_commit_status["message"] = error_message
 
-        log.error(e)
+        log.error(error_message)
         result = {"message": error_message}
-        code = 400
+        send_http_code = 400
 
     try:
-        # Send github commit status
-        push_github_commit_status(github_commit_status)
+        # Send github commit status if error not 403
+        if send_http_code != 403:
+            push_github_commit_status(github_commit_status)
     except Exception as e:
         log.error(e)
         result = {"message": str(e)}
-        code = 500
+        send_http_code = 500
 
-    return result, code
+    return result, send_http_code
