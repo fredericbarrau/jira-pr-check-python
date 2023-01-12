@@ -20,6 +20,15 @@ class NotJiraIssueException(Exception):
     """
 
 
+def get_payload_type(payload: str) -> str | None:
+    pr_type = None
+    if "pull_request" in payload:
+        pr_type = "pull_request"
+    elif "pusher" in payload:
+        pr_type = "push"
+    return pr_type
+
+
 def get_jira_issue_from_branch_name(branch_name: str) -> str:
     """
     Extract the Jira issue from the branch name
@@ -140,6 +149,11 @@ def jira_github_pr_check(request):
         # Payload MUST be send as a JSON application/json content
         # => beware of the configuration of the Webhook in Github
         payload = request.get_json()
+        payload_type = get_payload_type(payload)
+        if payload_type != "pull_request":
+            raise ValueError(
+                "this callback only manages PR webhook. Fix the webhook settings."
+            )
         # Grab the ref from the pull_request data in the payload
         branch_name = payload["pull_request"]["head"]["ref"]
         if branch_name is None:
