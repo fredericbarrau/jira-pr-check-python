@@ -21,6 +21,9 @@ class NotJiraIssueException(Exception):
 
 
 def get_payload_type(payload: str) -> str | None:
+    """
+    Return the type of the webhook payload received
+    """
     pr_type = None
     if "pull_request" in payload:
         pr_type = "pull_request"
