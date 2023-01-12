@@ -54,6 +54,7 @@ $ poetry export --without-hashes --format=requirements.txt > requirements.txt
 JIRA_DOMAIN=altirnao.atlassian.net
 # See https://docs.python.org/3/library/logging.html#logging-levels
 LOG_LEVEL=10
+# Account of the jira user associated with the jira_token:
 JIRA_EMAIL=frederic.barrau@altirnao.com
 # See gcloud secret:
 # List the versions:
@@ -61,6 +62,12 @@ JIRA_EMAIL=frederic.barrau@altirnao.com
 # Get the value for the latest version X:
 # gcloud secrets versions access X --secret jira-github-pr-check-user-token
 JIRA_TOKEN=< see google cloud secrets> 
+# Github PAT token
+# See here for generating a API token :
+# https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
+GITHUB_TOKEN=github_pat_xxxxxx
+# Webhook secret, provided at webhook creation:
+GITHUB_WEBHOOK_SECRET=123456
 ```
 
 #### Running the cloud function locally
