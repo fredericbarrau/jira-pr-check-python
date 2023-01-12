@@ -40,6 +40,8 @@ For local development, a `dev/.env` file can be created (ignored by git) in orde
 | JIRA_TOKEN            | Jira token associated with the `JIRA_EMAIL`                                                                                                                              | Yes       | N/A                            |
 | GITHUB_TOKEN          | Github PAT token. See [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) for generating a API token | Yes       | `github_pat_xxxxxx`            |
 | GITHUB_WEBHOOK_SECRET | Webhook secret, provided at webhook creation                                                                                                                             | Yes       | `123456`                       |
+CALLBACK_URL| Url of the "detail" link in github. For now, the relevant page of the documentation site|No|`https://docs.tech.aodocs.app/`
+
 
 ## Development
 

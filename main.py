@@ -134,6 +134,7 @@ def get_config() -> dict:
     config["jira_token"] = os.getenv("JIRA_TOKEN")
     config["github_token"] = os.getenv("GITHUB_TOKEN")
     config["github_webhook_secret"] = os.getenv("GITHUB_WEBHOOK_SECRET")
+    config["callback_url"] = os.getenv("CALLBACK_URL")
     return config
 
 
@@ -181,7 +182,7 @@ def jira_github_pr_check(request):
         "repository_name": None,
         "github_token": config["github_token"],
         "message": "failed to check if branch name has a jira issue (probably not)",
-        "callback_url": request.url,
+        "callback_url": config["callback_url"],
         "status": "failure",
     }
 
