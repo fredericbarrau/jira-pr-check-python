@@ -18,8 +18,6 @@ class NotJiraIssueException(Exception):
     Raised when a Github branch is not referenced as a Jira issue
     """
 
-    pass
-
 
 def get_jira_issue_from_branch_name(branch_name: str) -> str:
     match = regex.findall(
@@ -37,10 +35,10 @@ def is_jira_issue(config: dict, issue_id: str) -> bool:
             server="https://" + config["jira_domain"],
             basic_auth=(config["jira_email"], config["jira_token"]),
         )
-        log.debug(f"looking of issue '{issue_id}' in Jira..")
+        log.debug("looking of issue '%s' in Jira..", issue_id)
         # will trigger an exception when the issue is not found
         jira.issue(issue_id)
-        log.debug(f"{issue_id} found in Jira")
+        log.debug("%s found in Jira", issue_id)
     except Exception as e:
         log.debug(e)
         result = False
@@ -72,9 +70,9 @@ def get_config() -> dict:
 def push_github_commit_status(commit_status: dict) -> bool:
     g = Github(commit_status["github_token"])
     repo = g.get_repo(commit_status["repository_name"])
-    log.debug(f"get github repo {repo}")
+    log.debug("get github repo %s", repo)
     commit = repo.get_commit(sha=commit_status["commit_sha"])
-    log.debug(f"get github commit {commit}")
+    log.debug("get github commit %s", commit)
 
     commit.create_status(
         state=commit_status["status"],
@@ -83,7 +81,10 @@ def push_github_commit_status(commit_status: dict) -> bool:
         context="branch-name/jira",
     )
     log.debug(
-        f"send commit status {commit_status['status']} for commit sha {commit_status['commit_sha']} in project {commit_status['repository_name']}"
+        "send commit status %s for commit sha %s in project %s",
+        commit_status["status"],
+        commit_status["commit_sha"],
+        commit_status["repository_name"],
     )
 
 
@@ -107,7 +108,7 @@ def jira_github_pr_check(request):
 
     # Set the log level
     log.setLevel(config["log_level"])
-    log.info(f"log level: {log.level}")
+
     try:
         payload = request.get_json()
         branch_name = payload["pull_request"]["head"]["ref"]
@@ -116,7 +117,7 @@ def jira_github_pr_check(request):
             raise ValueError(
                 "Github payload is not a proper JSON: github webhook must send a JSON payload in application/json MIME type. Review the webhook settings"
             )
-        log.debug(f"branch name found: {branch_name}")
+        log.debug("branch name found: %s", branch_name)
 
         # amend github commit status
         github_commit_status["commit_sha"] = payload["pull_request"]["head"]["sha"]
@@ -129,14 +130,16 @@ def jira_github_pr_check(request):
             raise NotJiraIssueException(
                 f"branch name {branch_name} does not fit the JIRA branch name requirements"
             )
-        log.debug(f"issue id found ({issue_id}) in branch name {branch_name}")
+        log.debug("issue id found (%s) in branch name %s", issue_id, branch_name)
         if not is_jira_issue(config=config, issue_id=issue_id):
-            log.debug(f"issue ID {issue_id} is not a jira issue")
+            log.debug("issue ID %s is not a jira issue", issue_id)
             raise NotJiraIssueException(
                 f"branch name {branch_name} does not reference a JIRA issue. Issue Id ({issue_id}) not found in JIRA."
             )
         log.info(
-            f"branch name ({branch_name}) references a found Jira issue ({issue_id})"
+            "branch name (%s) references a found Jira issue (%s)",
+            branch_name,
+            issue_id,
         )
         # We dit it, we dit it ! (c) Dora
         github_commit_status[
