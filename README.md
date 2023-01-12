@@ -1,4 +1,4 @@
-# Jira Github PR Check
+# Cloud Function: Jira Github PR Check
 
 Cloud function used as a Github Webhook.
 Will check if a PR name is properly linked to a jira ticket.
@@ -29,6 +29,17 @@ The cloud function grabs the configuration secrets from environment variables.
 These environment variables contain secrets, and should be provided to the cloud function during deployment (see the dedicated terraform code).
 
 For local development, a `dev/.env` file can be created (ignored by git) in order to add these configurations and secrets, see below.
+
+**Required environment variables:**
+
+| Environment variable  | Description                                                                                                                                                              | Sensitive | Example                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------------------------------ |
+| JIRA_DOMAIN           | Domain of the Jira server to use                                                                                                                                         | No        | `altirnao.atlassian.net`       |
+| LOG_LEVEL             | Log level of the cloud function, see the [python logger documentation](https://docs.python.org/3/library/logging.html#logging-levels) for the available values           | No        | `10`                           |
+| JIRA_EMAIL            | Account of the jira user associated with the jira_token                                                                                                                  | No        | `frederic.barrau@altirnao.com` |
+| JIRA_TOKEN            | Jira token associated with the `JIRA_EMAIL`                                                                                                                              | Yes       | N/A                            |
+| GITHUB_TOKEN          | Github PAT token. See [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) for generating a API token | Yes       | `github_pat_xxxxxx`            |
+| GITHUB_WEBHOOK_SECRET | Webhook secret, provided at webhook creation                                                                                                                             | Yes       | `123456`                       |
 
 ## Development
 
