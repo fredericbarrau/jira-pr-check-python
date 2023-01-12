@@ -6,6 +6,7 @@ import functions_framework
 import os
 import regex
 
+# Setup logger
 log = logging.getLogger(__name__)
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
@@ -20,6 +21,11 @@ class NotJiraIssueException(Exception):
 
 
 def get_jira_issue_from_branch_name(branch_name: str) -> str:
+    """
+    Extract the Jira issue from the branch name
+    Uses the "official" Jira regexp, adapted for python
+    re module does not manage properly lookahead : using regex instead
+    """
     match = regex.findall(
         r"(?<= |-|_|^)([0-9A-Z][A-Za-z]{1,10}-[0-9]+)(?= |-|_|$)",
         branch_name,
@@ -29,6 +35,12 @@ def get_jira_issue_from_branch_name(branch_name: str) -> str:
 
 
 def is_jira_issue(config: dict, issue_id: str) -> bool:
+    """
+    Check if the provided issue_id is a proper Jira issue by
+    querying Jira API.
+    Beware that the visibility of the issue depends of the rights
+    of the token provided in the config dict.
+    """
     result = True
     try:
         jira = JIRA(
@@ -46,12 +58,18 @@ def is_jira_issue(config: dict, issue_id: str) -> bool:
 
 
 def get_branch_name_from_ref(git_ref: str) -> str | None:
+    """
+    Regexp for extracting the branch name from a git ref
+    """
     branch_name_re = "^refs/heads/(.*)$"
     match = regex.match(branch_name_re, git_ref)
     return match[1] if match is not None else match
 
 
 def get_config() -> dict:
+    """
+    Wrapper to fetch the configuration from env vars
+    """
     # Load the local dotenv, if present (for dev env mostly)
     load_dotenv(dotenv_path="dev/.env")
     config = {}
@@ -68,6 +86,12 @@ def get_config() -> dict:
 
 
 def push_github_commit_status(commit_status: dict) -> bool:
+    """
+    Push a Github commit status using the Github API
+    These checks are used by PR when Github is properly configured
+    See:
+    -  https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks
+    """
     g = Github(commit_status["github_token"])
     repo = g.get_repo(commit_status["repository_name"])
     log.debug("get github repo %s", repo)
@@ -88,12 +112,15 @@ def push_github_commit_status(commit_status: dict) -> bool:
     )
 
 
-# Register an HTTP function with the Functions Framework
+# Main HTTP cloud function (wraps by flask)
+# Name: jira_github_pr_check
 @functions_framework.http
 def jira_github_pr_check(request):
+    # Initialize the defaults response code & content
     code = 200
     result = "OK"
 
+    # Get the cloud function configuration
     config = get_config()
 
     # Initalize commit status
@@ -110,7 +137,10 @@ def jira_github_pr_check(request):
     log.setLevel(config["log_level"])
 
     try:
+        # Payload MUST be send as a JSON application/json content
+        # => beware of the configuration of the Webhook in Github
         payload = request.get_json()
+        # Grab the ref from the pull_request data in the payload
         branch_name = payload["pull_request"]["head"]["ref"]
         if branch_name is None:
             log.debug("branch name not found in the github payload")
@@ -119,18 +149,21 @@ def jira_github_pr_check(request):
             )
         log.debug("branch name found: %s", branch_name)
 
-        # amend github commit status
+        # amend github commit status: we have the commit & repo
         github_commit_status["commit_sha"] = payload["pull_request"]["head"]["sha"]
         github_commit_status["repository_name"] = payload["pull_request"]["head"][
             "repo"
         ]["full_name"]
 
+        # Is the branch contains a jira issue id ?
         issue_id = get_jira_issue_from_branch_name(branch_name)
         if issue_id is None:
             raise NotJiraIssueException(
                 f"branch name {branch_name} does not fit the JIRA branch name requirements"
             )
         log.debug("issue id found (%s) in branch name %s", issue_id, branch_name)
+        # Does the jira issue_id found in the branch a REAL jira issue ?
+        # -> asking Jira API
         if not is_jira_issue(config=config, issue_id=issue_id):
             log.debug("issue ID %s is not a jira issue", issue_id)
             raise NotJiraIssueException(
@@ -147,7 +180,9 @@ def jira_github_pr_check(request):
         ] = f"branch name ({branch_name}) references a found Jira issue ({issue_id})"
         github_commit_status["status"] = "success"
 
+    # Error management
     except NotJiraIssueException as e:
+        # That was not a proper jira issue :(
         error_message = str(e)
         github_commit_status["message"] = error_message
 
@@ -155,6 +190,8 @@ def jira_github_pr_check(request):
         result = {"message": error_message}
         code = 404
     except Exception as e:
+        # Something went wrong somewhat
+        # incorrect jira message format, or whatever
         error_message = str(e)
         github_commit_status["message"] = error_message
 
